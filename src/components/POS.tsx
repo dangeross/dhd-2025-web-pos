@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusIcon, MinusIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
-import { XMarkIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MinusIcon, CheckCircleIcon, ExclamationCircleIcon, BackspaceIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Item, BasketItem, Category } from '../types';
 import * as StorageService from '../services/storageService';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 
 type NotificationType = 'success' | 'error' | null;
 
@@ -23,6 +24,8 @@ const POS: React.FC = () => {
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
   const [notification, setNotification] = useState<Notification | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
+  const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
+  const [customAmount, setCustomAmount] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -136,6 +139,70 @@ const POS: React.FC = () => {
     }
   };
 
+  const handleCustomAmountSubmit = () => {
+    const amount = parseInt(customAmount);
+    
+    if (isNaN(amount) || amount <= 0) {
+      setNotification({
+        type: 'error',
+        message: 'Please enter a valid amount'
+      });
+      return;
+    }
+    
+    // Create a custom amount item and add it to the basket
+    const customItem: Item = {
+      id: uuidv4(),
+      name: 'Custom Amount',
+      price: amount,
+      description: 'Custom amount payment'
+    };
+    
+    handleAddToBasket(customItem);
+    setShowCustomAmountModal(false);
+    setCustomAmount('');
+  };
+  
+  const handleDirectCheckout = () => {
+    const amount = parseInt(customAmount);
+    
+    if (isNaN(amount) || amount <= 0) {
+      setNotification({
+        type: 'error',
+        message: 'Please enter a valid amount'
+      });
+      return;
+    }
+    
+    // Clear any existing basket items
+    StorageService.clearBasket();
+    
+    // Create a custom amount item and add it to the basket
+    const customItem: Item = {
+      id: uuidv4(),
+      name: 'Custom Amount',
+      price: amount,
+      description: 'Custom amount payment'
+    };
+    
+    StorageService.addToBasket(customItem, 1);
+    setShowCustomAmountModal(false);
+    setCustomAmount('');
+    
+    // Navigate directly to checkout
+    navigate('/checkout');
+  };
+
+  const handleNumberPadClick = (value: string) => {
+    if (value === 'backspace') {
+      setCustomAmount(prev => prev.slice(0, -1));
+    } else if (value === 'clear') {
+      setCustomAmount('');
+    } else {
+      setCustomAmount(prev => prev + value);
+    }
+  };
+
   const basketTotal = StorageService.getBasketTotal();
 
   const renderCategoryItems = (categoryId: string) => {
@@ -214,6 +281,17 @@ const POS: React.FC = () => {
 
       {/* Items Grid */}
       <div className="col-span-12 md:col-span-8 p-2">
+        <div className="mb-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Store</h1>
+          
+          <button
+            className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+            onClick={() => setShowCustomAmountModal(true)}
+          >
+            Custom Amount
+          </button>
+        </div>
+        
         <div className="mb-4">
           {/* Category Filter Pills */}
           {categories.length > 0 && (
@@ -393,6 +471,105 @@ const POS: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Custom Amount Modal */}
+      {showCustomAmountModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-medium">Enter Custom Amount</h3>
+              <button 
+                className="text-gray-400 hover:text-gray-600"
+                onClick={() => {
+                  setShowCustomAmountModal(false);
+                  setCustomAmount('');
+                }}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <div className="mb-4 bg-gray-50 p-4 border rounded-md text-right">
+                <span className="text-gray-500 mr-1">Amount:</span>
+                <span className="text-3xl font-medium">
+                  {customAmount || '0'} <span className="text-lg">sats</span>
+                </span>
+              </div>
+              
+              {/* Number Pad */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button
+                    key={num}
+                    className="p-4 text-xl font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                    onClick={() => handleNumberPadClick(num.toString())}
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button
+                  className="p-4 text-xl font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  onClick={() => handleNumberPadClick('clear')}
+                >
+                  C
+                </button>
+                <button
+                  className="p-4 text-xl font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  onClick={() => handleNumberPadClick('0')}
+                >
+                  0
+                </button>
+                <button
+                  className="p-4 text-xl font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors flex items-center justify-center"
+                  onClick={() => handleNumberPadClick('backspace')}
+                >
+                  <BackspaceIcon className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Quick Amounts */}
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {[1000, 5000, 10000, 25000, 50000, 100000].map((amount) => (
+                  <button
+                    key={amount}
+                    className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors"
+                    onClick={() => setCustomAmount(amount.toString())}
+                  >
+                    {amount.toLocaleString()} sats
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex justify-end">
+                <button 
+                  className="mr-auto px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                  onClick={handleDirectCheckout}
+                  disabled={!customAmount || parseInt(customAmount) <= 0}
+                >
+                  Direct Checkout
+                </button>
+                <button 
+                  className="mr-2 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  onClick={() => {
+                    setShowCustomAmountModal(false);
+                    setCustomAmount('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+                  onClick={handleCustomAmountSubmit}
+                  disabled={!customAmount || parseInt(customAmount) <= 0}
+                >
+                  Add to Basket
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
