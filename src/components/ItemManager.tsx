@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box, Button, Input, Heading, IconButton, Textarea
-} from '@chakra-ui/react';
-import { DeleteIcon, EditIcon, AddIcon } from '@chakra-ui/icons';
+import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { v4 as uuidv4 } from 'uuid';
 import type { Item } from '../types';
 import * as StorageService from '../services/storageService';
@@ -99,40 +96,38 @@ const ItemManager: React.FC = () => {
     : newItem;
 
   return (
-    <Box p={4}>
-      <Heading size="lg" mb={4}>Item Manager</Heading>
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Item Manager</h2>
       
       {!showForm ? (
-        <Button 
-          colorScheme="blue" 
+        <button 
+          className="bg-blue-500 hover:bg-blue-600 text-white mb-4 px-4 py-2 rounded flex items-center transition-colors"
           onClick={openNewItemForm}
-          mb={4}
         >
-          <Box mr={2}>
-            <AddIcon />
-          </Box>
+          <PlusIcon className="h-5 w-5 mr-2" />
           Add New Item
-        </Button>
+        </button>
       ) : (
-        <Box mb={6} p={4} borderWidth="1px" borderRadius="md" boxShadow="sm">
-          <Heading size="md" mb={4}>
+        <div className="mb-6 p-4 border rounded-md shadow-sm bg-white">
+          <h3 className="text-lg font-medium mb-4">
             {editingItemId ? 'Edit Item' : 'Add New Item'}
-          </Heading>
+          </h3>
           
           <form onSubmit={handleSubmit}>
-            <Box mb={3}>
-              <Heading size="xs" mb={1}>Name</Heading>
-              <Input
+            <div className="mb-3">
+              <h4 className="text-sm font-medium mb-1">Name</h4>
+              <input
+                className="w-full px-3 py-2 border rounded mb-3"
                 name="name"
                 value={currentItem.name}
                 onChange={handleInputChange}
                 placeholder="Item name"
                 required
-                mb={3}
               />
               
-              <Heading size="xs" mb={1}>Price (sats)</Heading>
-              <Input
+              <h4 className="text-sm font-medium mb-1">Price (sats)</h4>
+              <input
+                className="w-full px-3 py-2 border rounded mb-3"
                 name="price"
                 type="number"
                 min={1}
@@ -141,83 +136,83 @@ const ItemManager: React.FC = () => {
                 onChange={handleInputChange}
                 placeholder="0"
                 required
-                mb={3}
               />
               
-              <Heading size="xs" mb={1}>Description</Heading>
-              <Textarea
+              <h4 className="text-sm font-medium mb-1">Description</h4>
+              <textarea
+                className="w-full px-3 py-2 border rounded mb-4 resize-y"
                 name="description"
                 value={currentItem.description || ''}
                 onChange={handleInputChange}
                 placeholder="Item description"
-                mb={4}
+                rows={3}
               />
-            </Box>
+            </div>
             
-            <Box>
-              <Button colorScheme="blue" type="submit" mr={3}>
+            <div>
+              <button 
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-3 transition-colors" 
+                type="submit"
+              >
                 {editingItemId ? 'Update' : 'Save'}
-              </Button>
-              <Button variant="ghost" onClick={cancelEdit}>
+              </button>
+              <button 
+                className="text-gray-600 hover:bg-gray-100 px-4 py-2 rounded transition-colors" 
+                type="button" 
+                onClick={cancelEdit}
+              >
                 Cancel
-              </Button>
-            </Box>
+              </button>
+            </div>
           </form>
-        </Box>
+        </div>
       )}
       
       {/* Item List */}
-      <Box>
+      <div>
         {items.length === 0 ? (
-          <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
-            <Heading size="sm" color="gray.500">No items added yet</Heading>
-          </Box>
+          <div className="p-4 border rounded-md bg-gray-50">
+            <h3 className="text-sm text-gray-500">No items added yet</h3>
+          </div>
         ) : (
           items.map(item => (
-            <Box 
+            <div 
               key={item.id} 
-              p={3} 
-              mb={2} 
-              borderWidth="1px" 
-              borderRadius="md"
-              display="flex"
-              alignItems="center"
+              className="p-3 mb-2 border rounded-md flex items-center bg-white"
             >
-              <Box flex="1">
-                <Heading size="sm">{item.name}</Heading>
-                <Box display="flex" mt={1}>
-                  <Box fontWeight="bold" mr={4}>
+              <div className="flex-1">
+                <h3 className="font-medium">{item.name}</h3>
+                <div className="flex mt-1">
+                  <div className="font-bold mr-4">
                     {Math.round(item.price)} sats
-                  </Box>
-                  <Box color="gray.600" fontSize="sm">
+                  </div>
+                  <div className="text-gray-600 text-sm">
                     {item.description}
-                  </Box>
-                </Box>
-              </Box>
+                  </div>
+                </div>
+              </div>
               
-              <Box>
-                <IconButton
-                  aria-label="Edit item"
-                  size="sm"
-                  mr={2}
+              <div>
+                <button
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded mr-2 transition-colors"
                   onClick={() => handleEdit(item.id)}
+                  aria-label="Edit item"
                 >
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  aria-label="Delete item"
-                  colorScheme="red"
-                  size="sm"
+                  <PencilSquareIcon className="h-4 w-4" />
+                </button>
+                <button
+                  className="p-2 text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
                   onClick={() => handleDelete(item.id)}
+                  aria-label="Delete item"
                 >
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            </Box>
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           ))
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 

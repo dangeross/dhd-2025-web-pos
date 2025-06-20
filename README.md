@@ -1,6 +1,10 @@
-# Lightning POS - Point of Sale with Bitcoin Lightning Integration
+# Web POS - A workshop to integrate the Breez SDK
 
-A Point of Sale (POS) application built with Vite, React, and TypeScript that uses the Bitcoin Lightning Network for payments via the Breez SDK.
+A Point of Sale (POS) application built with Vite, React, and TypeScript that uses the Bitcoin Lightning Network for payments.
+
+## Workshop
+
+Go through the code (there are TODO hints), initialize a Breez SDK - Nodeless instance and use the Breez SDK to manage payments.
 
 ## Features
 
@@ -9,7 +13,7 @@ A Point of Sale (POS) application built with Vite, React, and TypeScript that us
 - Local storage for item persistence
 - Generate BOLT11 Lightning invoices for checkout
 - Real-time payment detection
-- Responsive design with Chakra UI
+- Responsive design with Tailwind
 
 ## Setup
 
@@ -44,7 +48,7 @@ npm run dev
 - React
 - TypeScript
 - React Router
-- Chakra UI
+- Tailwind
 - Breez SDK (@breeztech/breez-sdk-liquid)
 - Local Storage for data persistence
 

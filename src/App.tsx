@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import { Box, Flex, Container, Heading, Spacer, Button } from '@chakra-ui/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import ItemManager from './components/ItemManager'
 import POS from './components/POS'
@@ -11,39 +10,44 @@ function App() {
   const location = useLocation()
 
   return (
-    <Box>
-      <Box bg="blue.500" color="white" px={4} py={3}>
-        <Container maxW="container.xl">
-          <Flex align="center">
-            <Heading size="md">Lightning POS</Heading>
-            <Spacer />
-            <Flex gap={2}>
-              <Button 
-                variant={location.pathname === '/' ? 'solid' : 'outline'} 
-                colorScheme="whiteAlpha"
+    <div className="min-h-screen">
+      <header className="bg-blue-600 text-white px-4 py-3 shadow-md">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold">Web POS</h1>
+            <div className="flex gap-2">
+              <button 
+                className={`px-4 py-2 rounded-md transition-colors ${
+                  location.pathname === '/' 
+                    ? 'bg-white text-blue-600 font-medium' 
+                    : 'bg-transparent border border-white/60 hover:bg-white/10'
+                }`}
                 onClick={() => navigate('/')}
               >
                 Store
-              </Button>
-              <Button 
-                variant={location.pathname === '/manage' ? 'solid' : 'outline'} 
-                colorScheme="whiteAlpha"
+              </button>
+              <button 
+                className={`px-4 py-2 rounded-md transition-colors ${
+                  location.pathname === '/manage' 
+                    ? 'bg-white text-blue-600 font-medium' 
+                    : 'bg-transparent border border-white/60 hover:bg-white/10'
+                }`}
                 onClick={() => navigate('/manage')}
               >
                 Manage Items
-              </Button>
-            </Flex>
-          </Flex>
-        </Container>
-      </Box>
-      <Container maxW="container.xl" py={6}>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main className="container mx-auto max-w-7xl py-6 px-4">
         <Routes>
           <Route path="/" element={<POS />} />
           <Route path="/manage" element={<ItemManager />} />
           <Route path="/checkout" element={<Checkout />} />
         </Routes>
-      </Container>
-    </Box>
+      </main>
+    </div>
   )
 }
 

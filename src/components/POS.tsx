@@ -1,22 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box, Grid, GridItem, Heading, Text, Button,
-  Flex, Spacer, IconButton, Input 
-} from '@chakra-ui/react';
-import { DeleteIcon, AddIcon } from '@chakra-ui/icons';
+import { PlusIcon, MinusIcon, TrashIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Item, BasketItem } from '../types';
 import * as StorageService from '../services/storageService';
 import { useNavigate } from 'react-router-dom';
 
+type NotificationType = 'success' | 'error' | null;
+
+interface Notification {
+  type: NotificationType;
+  message: string;
+}
+
 const POS: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
+  const [notification, setNotification] = useState<Notification | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadItems();
     loadBasket();
   }, []);
+
+  useEffect(() => {
+    if (notification) {
+      // Auto-dismiss notification after 3 seconds
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const loadItems = () => {
     setItems(StorageService.getItems());
@@ -29,8 +45,11 @@ const POS: React.FC = () => {
   const handleAddToBasket = (item: Item) => {
     StorageService.addToBasket(item, 1);
     loadBasket();
-    // Simple alert instead of toast
-    alert(`${item.name} has been added to your basket`);
+    // Show toast notification instead of alert
+    setNotification({
+      type: 'success',
+      message: `${item.name} has been added to your basket`
+    });
   };
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
@@ -45,7 +64,11 @@ const POS: React.FC = () => {
 
   const handleCheckout = () => {
     if (basketItems.length === 0) {
-      alert('Please add items to your basket before checkout');
+      // Show error notification instead of alert
+      setNotification({
+        type: 'error',
+        message: 'Please add items to your basket before checkout'
+      });
       return;
     }
     navigate('/checkout');
@@ -56,133 +79,163 @@ const POS: React.FC = () => {
     loadBasket();
   };
 
+  const handleIncrementQuantity = (id: string, currentQuantity: number) => {
+    handleUpdateQuantity(id, currentQuantity + 1);
+  };
+
+  const handleDecrementQuantity = (id: string, currentQuantity: number) => {
+    if (currentQuantity > 1) {
+      handleUpdateQuantity(id, currentQuantity - 1);
+    } else {
+      // If quantity is 1 and we decrement, remove the item
+      handleRemoveFromBasket(id);
+    }
+  };
+
   const basketTotal = StorageService.getBasketTotal();
 
   return (
-    <Grid templateColumns="repeat(12, 1fr)" gap={4} p={4}>
+    <div className="grid grid-cols-12 gap-4 p-4 relative">
+      {/* Toast Notification */}
+      {notification && (
+        <div 
+          className={`fixed top-4 right-4 z-50 flex items-center shadow-lg border px-4 py-3 rounded-lg transition-all transform ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircleIcon className="w-5 h-5 mr-2" />
+          ) : (
+            <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+          )}
+          <p>{notification.message}</p>
+          <button 
+            className="ml-4 text-gray-500 hover:text-gray-700"
+            onClick={() => setNotification(null)}
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Items Grid */}
-      <GridItem colSpan={{ base: 12, md: 8 }} p={2}>
-        <Box mb={4}>
-          <Heading size="lg">Available Items</Heading>
-        </Box>
-        <Grid templateColumns="repeat(auto-fill, minmax(240px, 1fr))" gap={6}>
-          {items.length === 0 ? (
-            <Box p={4} borderWidth="1px" borderRadius="lg">
-              <Text>No items available. Please add some items first.</Text>
-            </Box>
-          ) : items.map((item) => (
-            <Box key={item.id} p={4} borderWidth="1px" borderRadius="lg" boxShadow="md">
-              <Heading size="md" mb={2}>{item.name}</Heading>
-              <Text mb={2}>{item.description}</Text>
-              <Text fontWeight="bold" mb={4}>{Math.round(item.price)} sats</Text>
-              <Button 
-                colorScheme="blue" 
-                onClick={() => handleAddToBasket(item)}
-                width="100%"
-              >
-                <Box mr={2}>
-                  <AddIcon />
-                </Box>
-                Add to Basket
-              </Button>
-            </Box>
-          ))}
-        </Grid>
-      </GridItem>
+      <div className="col-span-12 md:col-span-8 p-2">
+        {items.length === 0 ? (
+          <div className="flex items-center justify-center">
+            <div className="text-center p-8">
+              <p className="text-gray-500 mb-2">No items available.</p>
+              <p className="text-gray-500">Please add some items first.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item) => (
+              <div key={item.id} className="p-4 border rounded-lg shadow-md bg-white flex flex-col h-full">
+                <div className="flex-grow">
+                  <h3 className="text-lg font-bold mb-2">{item.name}</h3>
+                  <p className="mb-4 text-gray-600">{item.description}</p>
+                </div>
+                <div className="mt-auto">
+                  <p className="font-bold mb-3">{Math.round(item.price)} sats</p>
+                  <button 
+                    className="bg-blue-500 hover:bg-blue-600 text-white w-full px-4 py-2 rounded flex items-center justify-center transition-colors"
+                    onClick={() => handleAddToBasket(item)}
+                  >
+                    <PlusIcon className="h-5 w-5 mr-2" />
+                    Add to Basket
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Basket */}
-      <GridItem colSpan={{ base: 12, md: 4 }} p={2}>
-        <Box 
-          p={4} 
-          borderWidth="1px" 
-          borderRadius="lg" 
-          position="sticky" 
-          top="20px"
-          bg="white"
+      <div className="col-span-12 md:col-span-4 p-2">
+        <div 
+          className="p-4 border rounded-lg sticky top-5 bg-white shadow"
         >
-          <Flex align="center" mb={4}>
-            <Heading size="lg">Basket</Heading>
-            <Spacer />
-            <Box bg="green.100" px={2} py={1} borderRadius="md">
-              <Text color="green.800" fontWeight="bold">
+          <div className="flex items-center mb-4">
+            <h2 className="text-2xl font-bold">Basket</h2>
+            <div className="ml-auto">
+              <span className="bg-green-100 px-2 py-1 rounded text-green-800 font-bold text-sm">
                 {basketItems.reduce((total, item) => total + item.quantity, 0)} items
-              </Text>
-            </Box>
-          </Flex>
+              </span>
+            </div>
+          </div>
           
           {basketItems.length === 0 ? (
-            <Text>Your basket is empty</Text>
+            <p>Your basket is empty</p>
           ) : (
-            <Box>
+            <div>
               {basketItems.map((item) => (
-                <Box key={item.id} p={2} borderWidth="1px" borderRadius="md" mb={2}>
-                  <Flex align="center">
-                    <Box>
-                      <Text fontWeight="bold">{item.name}</Text>
-                      <Text fontSize="sm">{Math.round(item.price)} sats each</Text>
-                    </Box>
-                    <Spacer />
-                    <Flex align="center">
-                      <Input
-                        size="sm"
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value);
-                          if (!isNaN(val) && val > 0) {
-                            handleUpdateQuantity(item.id, val);
-                          }
-                        }}
-                        width="60px"
-                        mr={2}
-                      />
-                      <IconButton
-                        aria-label="Remove item"
-                        onClick={() => handleRemoveFromBasket(item.id)}
-                        size="sm"
-                        colorScheme="red"
+                <div key={item.id} className="p-2 border rounded mb-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex-grow pr-2">
+                      <p className="font-bold text-left">{item.name}</p>
+                      <p className="text-sm text-gray-600 text-left">{Math.round(item.price)} sats each</p>
+                    </div>
+                    <div className="flex items-center shrink-0">
+                      <button 
+                        className="w-8 h-8 flex items-center justify-center text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-l-md border border-gray-300 transition-colors"
+                        onClick={() => handleDecrementQuantity(item.id, item.quantity)}
+                        aria-label="Decrease quantity"
                       >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Flex>
-                  </Flex>
-                </Box>
+                        <MinusIcon className="h-4 w-4" />
+                      </button>
+                      <div className="w-10 h-8 flex items-center justify-center border-t border-b border-gray-300 bg-white text-center">
+                        {item.quantity}
+                      </div>
+                      <button 
+                        className="w-8 h-8 flex items-center justify-center text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-r-md border border-gray-300 transition-colors"
+                        onClick={() => handleIncrementQuantity(item.id, item.quantity)}
+                        aria-label="Increase quantity"
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
               
-              <Box pt={4} borderTopWidth="1px" mt={2}>
-                <Flex>
-                  <Text fontWeight="bold">Total:</Text>
-                  <Spacer />
-                  <Text fontWeight="bold">{Math.round(basketTotal)} sats</Text>
-                </Flex>
-              </Box>
+              <div className="pt-4 border-t mt-2">
+                <div className="flex items-center">
+                  <p className="font-bold">Total:</p>
+                  <p className="font-bold ml-auto">{Math.round(basketTotal)} sats</p>
+                </div>
+              </div>
               
-              <Button 
-                colorScheme="green" 
-                size="lg" 
-                width="100%" 
+              <button 
+                className={`w-full mt-4 px-4 py-2 rounded text-white text-lg font-medium ${
+                  basketItems.length === 0
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 transition-colors'
+                }`}
                 onClick={handleCheckout}
                 disabled={basketItems.length === 0}
-                mt={4}
               >
                 Checkout
-              </Button>
+              </button>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                width="100%" 
+              <button 
+                className={`w-full mt-2 px-4 py-1 rounded border text-sm ${
+                  basketItems.length === 0
+                    ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                    : 'border-gray-400 hover:bg-gray-100 transition-colors'
+                }`}
                 onClick={clearBasket}
                 disabled={basketItems.length === 0}
-                mt={2}
               >
                 Clear Basket
-              </Button>
-            </Box>
+              </button>
+            </div>
           )}
-        </Box>
-      </GridItem>
-    </Grid>
+        </div>
+      </div>
+    </div>
   );
 };
 

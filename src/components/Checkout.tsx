@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box, Center, Heading, Text, Spinner,
-  Button, Flex, Spacer
-} from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
+import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { BasketItem, InvoiceStatus } from '../types';
 import * as StorageService from '../services/storageService';
 import * as LightningService from '../services/lightningService';
 import { QRCodeSVG } from 'qrcode.react';
+
+type NotificationType = 'success' | 'error' | null;
+
+interface Notification {
+  type: NotificationType;
+  message: string;
+}
 
 const Checkout: React.FC = () => {
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
@@ -16,6 +21,7 @@ const Checkout: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<InvoiceStatus | null>(null);
   const [isPaid, setIsPaid] = useState(false);
+  const [notification, setNotification] = useState<Notification | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +38,17 @@ const Checkout: React.FC = () => {
     // Generate invoice when component loads
     generateInvoice(basketTotal);
   }, [navigate]);
+
+  useEffect(() => {
+    if (notification) {
+      // Auto-dismiss notification after 3 seconds
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     // Set up payment listener if we have an invoice
@@ -77,7 +94,11 @@ const Checkout: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to create lightning invoice:', error);
       setError(error.message || 'Failed to create lightning invoice');
-      alert('Failed to create invoice: ' + (error.message || 'Unknown error'));
+      // Show error notification instead of alert
+      setNotification({
+        type: 'error',
+        message: 'Failed to create invoice: ' + (error.message || 'Unknown error')
+      });
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +106,11 @@ const Checkout: React.FC = () => {
 
   const handlePaymentSuccess = () => {
     setIsPaid(true);
-    alert('Payment Received! Thank you for your payment.');
+    // Show success notification instead of alert
+    setNotification({
+      type: 'success',
+      message: 'Payment Received! Thank you for your payment.'
+    });
     
     // Clear the basket after successful payment
     StorageService.clearBasket();
@@ -100,126 +125,128 @@ const Checkout: React.FC = () => {
   };
 
   return (
-    <Center py={10}>
-      <Box 
-        maxW="lg" 
-        borderWidth="1px" 
-        borderRadius="lg" 
-        overflow="hidden" 
-        p={6} 
-        boxShadow="lg"
+    <div className="flex justify-center py-10 relative">
+      {/* Toast Notification */}
+      {notification && (
+        <div 
+          className={`fixed top-4 right-4 z-50 flex items-center shadow-lg border px-4 py-3 rounded-lg transition-all transform ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircleIcon className="w-5 h-5 mr-2" />
+          ) : (
+            <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+          )}
+          <p>{notification.message}</p>
+          <button 
+            className="ml-4 text-gray-500 hover:text-gray-700"
+            onClick={() => setNotification(null)}
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+      
+      <div 
+        className="max-w-lg border border-gray-200 rounded-lg overflow-hidden p-6 shadow-lg bg-white"
       >
-        <Box mb={6}>
-          <Heading size="lg" textAlign="center">Checkout</Heading>
-        </Box>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-center">Checkout</h2>
+        </div>
         
         {error && (
-          <Box 
-            p={4} 
-            bg="red.100" 
-            borderRadius="md" 
-            mb={4}
+          <div 
+            className="p-4 bg-red-100 rounded-md mb-4"
           >
-            <Text color="red.700">{error}</Text>
-          </Box>
+            <p className="text-red-700">{error}</p>
+          </div>
         )}
         
         {!isPaid ? (
           <>
-            <Box mb={6}>
-              <Heading size="md" mb={4}>Order Summary</Heading>
-              <Box>
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-4">Order Summary</h3>
+              <div>
                 {basketItems.map((item) => (
-                  <Flex key={item.id} mb={2}>
-                    <Text>
+                  <div key={item.id} className="flex justify-between mb-2">
+                    <p>
                       {item.quantity}x {item.name}
-                    </Text>
-                    <Spacer />
-                    <Text>{Math.round(item.price * item.quantity)} sats</Text>
-                  </Flex>
+                    </p>
+                    <p>{Math.round(item.price * item.quantity)} sats</p>
+                  </div>
                 ))}
-                <Box 
-                  borderTopWidth="1px" 
-                  pt={2} 
-                  mt={2}
+                <div 
+                  className="border-t pt-2 mt-2"
                 >
-                  <Flex>
-                    <Text fontWeight="bold">Total:</Text>
-                    <Spacer />
-                    <Text fontWeight="bold">{Math.round(total)} sats</Text>
-                  </Flex>
-                </Box>
-              </Box>
-            </Box>
+                  <div className="flex justify-between">
+                    <p className="font-bold">Total:</p>
+                    <p className="font-bold">{Math.round(total)} sats</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            <Box py={4} mb={4}>
-              <Heading size="md" mb={4} textAlign="center">
+            <div className="py-4 mb-4">
+              <h3 className="text-lg font-medium mb-4 text-center">
                 Pay with Lightning
-              </Heading>
+              </h3>
               
               {isLoading ? (
-                <Center py={8}>
-                  <Spinner size="xl" />
-                  <Text ml={4}>Generating invoice...</Text>
-                </Center>
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+                  <p className="ml-4">Generating invoice...</p>
+                </div>
               ) : invoice ? (
-                <Box textAlign="center">
-                  <Center>
+                <div className="text-center">
+                  <div className="flex justify-center">
                     <QRCodeSVG value={invoice.bolt11} size={200} />
-                  </Center>
-                  <Text fontSize="sm" mt={3} mb={3}>
+                  </div>
+                  <p className="text-sm mt-3 mb-3">
                     Scan with your Lightning wallet to pay {Math.round(total)} sats
-                  </Text>
-                  <Box 
-                    borderWidth="1px" 
-                    borderRadius="md" 
-                    p={2} 
-                    bg="gray.50"
-                    mb={4}
-                    overflow="auto"
-                    fontSize="xs"
-                    fontFamily="monospace"
+                  </p>
+                  <div 
+                    className="border rounded-md p-2 bg-gray-50 mb-4 overflow-auto text-xs font-mono"
                   >
                     {invoice.bolt11}
-                  </Box>
-                  <Text fontSize="sm" color="blue.600" fontWeight="bold">
+                  </div>
+                  <p className="text-sm text-blue-600 font-bold">
                     Waiting for payment... (demo: payment will auto-complete in 10 seconds)
-                  </Text>
-                </Box>
+                  </p>
+                </div>
               ) : null}
-            </Box>
+            </div>
             
-            <Button onClick={handleBack} colorScheme="gray" width="100%">
+            <button 
+              onClick={handleBack} 
+              className="bg-gray-500 hover:bg-gray-600 text-white w-full py-2 rounded transition-colors"
+            >
               Back to Store
-            </Button>
+            </button>
           </>
         ) : (
-          <Box textAlign="center" py={4}>
-            <Heading size="md" mb={4}>Payment Successful!</Heading>
-            <Box 
-              p={2} 
-              bg="green.100" 
-              borderRadius="full"
-              width="100px"
-              height="100px"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              margin="0 auto"
-              mb={4}
+          <div className="text-center py-4">
+            <h3 className="text-lg font-medium mb-4">Payment Successful!</h3>
+            <div 
+              className="p-2 bg-green-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-4"
             >
-              <Text fontSize="6xl" color="green.500">✓</Text>
-            </Box>
-            <Text mb={6}>
+              <span className="text-6xl text-green-500">✓</span>
+            </div>
+            <p className="mb-6">
               Thank you for your payment of {Math.round(total)} sats. Your order has been processed successfully.
-            </Text>
-            <Button onClick={handleNewOrder} colorScheme="blue" width="100%">
+            </p>
+            <button 
+              onClick={handleNewOrder} 
+              className="bg-blue-500 hover:bg-blue-600 text-white w-full py-2 rounded transition-colors"
+            >
               New Order
-            </Button>
-          </Box>
+            </button>
+          </div>
         )}
-      </Box>
-    </Center>
+      </div>
+    </div>
   );
 };
 
