@@ -1,7 +1,57 @@
-import type { Item, BasketItem } from '../types';
+import type { Item, BasketItem, Category } from '../types';
 
 const ITEMS_KEY = 'pos_items';
 const BASKET_KEY = 'pos_basket';
+const CATEGORIES_KEY = 'pos_categories';
+
+// Category management
+export const getCategories = (): Category[] => {
+  const categories = localStorage.getItem(CATEGORIES_KEY);
+  return categories ? JSON.parse(categories) : [];
+};
+
+export const saveCategories = (categories: Category[]): void => {
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+};
+
+export const addCategory = (category: Category): void => {
+  const categories = getCategories();
+  categories.push(category);
+  saveCategories(categories);
+};
+
+export const updateCategory = (category: Category): void => {
+  const categories = getCategories();
+  const index = categories.findIndex(c => c.id === category.id);
+  if (index !== -1) {
+    categories[index] = category;
+    saveCategories(categories);
+  }
+};
+
+export const deleteCategory = (id: string): void => {
+  const categories = getCategories();
+  saveCategories(categories.filter(category => category.id !== id));
+  
+  // Update items that were in this category
+  const items = getItems();
+  const updatedItems = items.map(item => 
+    item.categoryId === id ? {...item, categoryId: undefined} : item
+  );
+  saveItems(updatedItems);
+};
+
+export const getCategoryById = (id: string): Category | undefined => {
+  return getCategories().find(category => category.id === id);
+};
+
+export const getItemsByCategory = (categoryId?: string): Item[] => {
+  const items = getItems();
+  if (!categoryId) {
+    return items.filter(item => !item.categoryId);
+  }
+  return items.filter(item => item.categoryId === categoryId);
+};
 
 // Item management
 export const getItems = (): Item[] => {

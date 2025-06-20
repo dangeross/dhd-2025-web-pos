@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { PlusIcon, MinusIcon, TrashIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { Item, BasketItem } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { PlusIcon, MinusIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import type { Item, BasketItem, Category } from '../types';
 import * as StorageService from '../services/storageService';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,14 +12,22 @@ interface Notification {
   message: string;
 }
 
+interface ItemsByCategory {
+  [categoryId: string]: Item[];
+  uncategorized: Item[];
+}
+
 const POS: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
   const [notification, setNotification] = useState<Notification | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
   const navigate = useNavigate();
 
   useEffect(() => {
     loadItems();
+    loadCategories();
     loadBasket();
   }, []);
 
@@ -38,9 +46,45 @@ const POS: React.FC = () => {
     setItems(StorageService.getItems());
   };
 
+  const loadCategories = () => {
+    setCategories(StorageService.getCategories());
+  };
+
   const loadBasket = () => {
     setBasketItems(StorageService.getBasket());
   };
+
+  // Group items by category
+  const itemsByCategory = useMemo<ItemsByCategory>(() => {
+    const grouped: ItemsByCategory = {
+      uncategorized: []
+    };
+    
+    // Add all items to their respective category group
+    items.forEach(item => {
+      if (!item.categoryId) {
+        grouped.uncategorized.push(item);
+      } else {
+        if (!grouped[item.categoryId]) {
+          grouped[item.categoryId] = [];
+        }
+        grouped[item.categoryId].push(item);
+      }
+    });
+    
+    return grouped;
+  }, [items]);
+
+  // Filter items based on selected category
+  const displayedItems = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return items;
+    } else if (selectedCategory === 'uncategorized') {
+      return itemsByCategory.uncategorized;
+    } else {
+      return itemsByCategory[selectedCategory] || [];
+    }
+  }, [items, itemsByCategory, selectedCategory]);
 
   const handleAddToBasket = (item: Item) => {
     StorageService.addToBasket(item, 1);
@@ -94,6 +138,54 @@ const POS: React.FC = () => {
 
   const basketTotal = StorageService.getBasketTotal();
 
+  const renderCategoryItems = (categoryId: string) => {
+    const categoryItems = categoryId === 'uncategorized' 
+      ? itemsByCategory.uncategorized 
+      : itemsByCategory[categoryId] || [];
+      
+    if (categoryItems.length === 0) return null;
+    
+    const category = categories.find(c => c.id === categoryId);
+    
+    return (
+      <div key={categoryId} className="mb-8">
+        <h2 className="text-xl font-bold mb-4 flex items-center">
+          {category ? (
+            <>
+              <span 
+                className="inline-block w-3 h-3 rounded-full mr-2" 
+                style={{ backgroundColor: category.color }}
+              ></span>
+              {category.name}
+            </>
+          ) : (
+            'Uncategorized'
+          )}
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categoryItems.map((item) => (
+            <div key={item.id} className="p-4 border rounded-lg shadow-md bg-white flex flex-col h-full">
+              <div className="flex-grow">
+                <h3 className="text-lg font-bold mb-2">{item.name}</h3>
+                <p className="mb-4 text-gray-600">{item.description}</p>
+              </div>
+              <div className="mt-auto">
+                <p className="font-bold mb-3">{Math.round(item.price)} sats</p>
+                <button 
+                  className="bg-blue-500 hover:bg-blue-600 text-white w-full px-4 py-2 rounded flex items-center justify-center transition-colors"
+                  onClick={() => handleAddToBasket(item)}
+                >
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  Add to Basket
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="grid grid-cols-12 gap-4 p-4 relative">
       {/* Toast Notification */}
@@ -122,16 +214,82 @@ const POS: React.FC = () => {
 
       {/* Items Grid */}
       <div className="col-span-12 md:col-span-8 p-2">
+        <div className="mb-4">
+          {/* Category Filter Pills */}
+          {categories.length > 0 && (
+            <div className="mb-6 overflow-x-auto pb-2">
+              <div className="flex space-x-2">
+                <button
+                  className={`py-1 px-3 rounded-full text-sm whitespace-nowrap transition-colors ${
+                    selectedCategory === 'all'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  }`}
+                  onClick={() => setSelectedCategory('all')}
+                >
+                  All Items
+                </button>
+                
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    className={`py-1 px-3 rounded-full text-sm whitespace-nowrap transition-colors flex items-center ${
+                      selectedCategory === category.id
+                        ? 'text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                    }`}
+                    style={selectedCategory === category.id ? { backgroundColor: category.color } : {}}
+                    onClick={() => setSelectedCategory(category.id)}
+                  >
+                    <span 
+                      className="inline-block w-2 h-2 rounded-full mr-2"
+                      style={{ backgroundColor: category.color }}
+                    ></span>
+                    {category.name}
+                  </button>
+                ))}
+                
+                {itemsByCategory.uncategorized.length > 0 && (
+                  <button
+                    className={`py-1 px-3 rounded-full text-sm whitespace-nowrap transition-colors ${
+                      selectedCategory === 'uncategorized'
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                    }`}
+                    onClick={() => setSelectedCategory('uncategorized')}
+                  >
+                    Uncategorized
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Items Display */}
         {items.length === 0 ? (
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center h-64 border rounded-lg bg-gray-50">
             <div className="text-center p-8">
               <p className="text-gray-500 mb-2">No items available.</p>
               <p className="text-gray-500">Please add some items first.</p>
             </div>
           </div>
+        ) : displayedItems.length === 0 ? (
+          <div className="flex items-center justify-center h-64 border rounded-lg bg-gray-50">
+            <div className="text-center p-8">
+              <p className="text-gray-500 mb-2">No items in this category.</p>
+            </div>
+          </div>
+        ) : selectedCategory === 'all' ? (
+          // Show items grouped by category
+          <div>
+            {categories.map(category => renderCategoryItems(category.id))}
+            {itemsByCategory.uncategorized.length > 0 && renderCategoryItems('uncategorized')}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
+          // Show items for the selected category
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayedItems.map((item) => (
               <div key={item.id} className="p-4 border rounded-lg shadow-md bg-white flex flex-col h-full">
                 <div className="flex-grow">
                   <h3 className="text-lg font-bold mb-2">{item.name}</h3>
